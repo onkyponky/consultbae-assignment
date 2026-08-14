@@ -1,7 +1,8 @@
 # Phase 1 - ingestion only.
-# CSV reading uses the stdlib `csv` module deliberately: it surfaces
-# structurally broken rows instead of silently coercing them.
-SQLAlchemy>=2.0
+#
+# CSV reading uses the stdlib `csv` module deliberately, so pandas is not a
+# dependency here. See CLAUDE.md for the reasoning.
+SQLAlchemy==2.0.52
 
-# Later phases will add: web framework (Task 3), audio metadata
-# extraction (Task 3). Not listed yet - nothing here is unused.
+# Later phases will add a web framework and an audio metadata library
+# (Task 3). Not listed yet - nothing here is unused.
