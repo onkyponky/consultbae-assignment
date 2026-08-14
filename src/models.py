@@ -146,7 +146,14 @@ class Person(Base):
     status: Mapped[str | None] = mapped_column(Text)
     verified: Mapped[bool | None] = mapped_column(Boolean)
     projects_completed: Mapped[int | None] = mapped_column(Integer)
+
+    # Applied date: source1 uses four formats, and six values are genuinely
+    # ambiguous (`07/03/2026`, `03-07-2026`) because both components are 12
+    # or less. The separator resolves it -- `07/13/2026` proves slash means
+    # MM/DD, `24-07-2026` proves dash means DD-MM -- but that is inference,
+    # so the raw string survives the parse.
     applied_date: Mapped[date | None] = mapped_column(Date)
+    applied_date_raw: Mapped[str | None] = mapped_column(Text)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=func.now())
@@ -251,9 +258,10 @@ class DataIssue(Base):
     raw_value: Mapped[str | None] = mapped_column(Text)
     action_taken: Mapped[str] = mapped_column(Text, nullable=False)
 
-    # skipped  -- the row never reached staging
+    # skipped  -- the row was dropped and no judgment was required
     # repaired -- a value was changed
-    # flagged  -- a judgment call was made and the raw value survives
+    # flagged  -- a judgment call was made, and the raw value survives in
+    #             the log so the call can be reviewed
     severity: Mapped[str] = mapped_column(Text, nullable=False, index=True)
 
     detected_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
