@@ -1,9 +1,10 @@
 """Phase 1 ingestion: load all three CSVs into staging exactly as-is.
 
-This script makes no judgment calls. It does not clean, convert, match or
-deduplicate. Its only decisions are structural: a row either reaches
-staging verbatim, or it is skipped and logged to `data_issues` with the
-raw line that caused it.
+This script does not clean, convert, match or deduplicate. Its only
+decisions are structural: a row either reaches staging verbatim, or it is
+skipped and logged to `data_issues` with the raw line that caused it. The
+one judgment it records is refusing to repair a structurally recoverable
+row, which is logged as flagged rather than resolved here.
 
 Read with the stdlib `csv` module on purpose. A forgiving parser (pandas)
 would dtype-guess the mixed-unit CTC column into floats and would accept
@@ -271,7 +272,10 @@ def ingest_file(session: Session, spec: SourceSpec) -> FileResult:
                         f"line {duplicate_of}, so repairing this row would "
                         "add no new person."
                     )
-            action += " Deferred to Phase 2: Phase 1 makes no judgment calls."
+            action += (
+                " Dropping it rather than repairing it is the judgment call; "
+                "the repair is deferred to Phase 2."
+            )
 
             log(
                 line_no,
