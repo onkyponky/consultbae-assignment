@@ -6,12 +6,19 @@ I have to defend every line of this live on a call. If I cannot explain it
 out loud, it does not belong in the repo.
 
 ## Stack, do not substitute
-Python 3.11
+Python 3.14.6, the version actually installed here, not 3.11
 SQLAlchemy ORM over SQLite
-pandas for CSV loading only
+stdlib csv for CSV loading, not pandas
 FastAPI plus Jinja2 templates for the web app
 Vanilla JS and the MediaRecorder API for browser recording
 ffprobe and pydub for audio metadata
+
+Why stdlib csv and not pandas: a forgiving parser dtype guesses Current CTC
+into floats, which hides that the column mixes absolute rupees (417964) with
+lakhs per annum (4.2), a five orders of magnitude difference inside one
+column. It also accepts the rotated row at source2 line 20 as ordinary data,
+because that row has a valid field count and is wrong only in its field
+contents. Both are findings that have to surface, not be handled for us.
 
 Not allowed: Django, Streamlit, React, Next.js, any ORM other than
 SQLAlchemy, any fuzzy matching library.
