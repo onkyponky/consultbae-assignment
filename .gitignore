@@ -1,11 +1,26 @@
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 .venv/
 venv/
+env/
+*.egg-info/
+
+# Database artifacts (rebuilt by the pipeline; do not commit)
+db/*.db
+db/*.sqlite
+db/*.sqlite3
+
+# Audio uploads (Task 3)
+uploads/
+
+# Environment / secrets
 .env
-*.db
-*.sqlite3
-/uploads/*
-!/uploads/.gitkeep
+.env.*
+!.env.example
+
+# OS / editor
 .DS_Store
+Thumbs.db
 .vscode/
+.idea/
