@@ -168,125 +168,132 @@ def ingest_file(session: Session, spec: SourceSpec) -> FileResult:
     # Used to report that a malformed row duplicates an existing one.
     staged_keys: dict[str, int] = {}
 
+    # Keep the physical lines so `data_issues.raw_value` can hold the literal
+    # text from the file. Re-joining parsed fields with ',' would destroy the
+    # original quoting and misrepresent the very rows we are logging.
     # utf-8-sig so a BOM from an Excel export does not end up inside the
-    # first header name.
-    with path.open(newline="", encoding="utf-8-sig") as fh:
-        reader = csv.reader(fh)
+    # first header name. csv.reader accepts any iterable of strings.
+    raw_lines = path.read_text(encoding="utf-8-sig").splitlines(keepends=True)
+    reader = csv.reader(raw_lines)
 
-        try:
-            header = next(reader)
-        except StopIteration:
-            raise ValueError(f"{spec.filename} is empty")
+    try:
+        header = next(reader)
+    except StopIteration:
+        raise ValueError(f"{spec.filename} is empty")
 
-        if header != spec.headers:
-            raise ValueError(
-                f"{spec.filename} header does not match the expected schema.\n"
-                f"  expected: {spec.headers}\n"
-                f"  found:    {header}"
+    if header != spec.headers:
+        raise ValueError(
+            f"{spec.filename} header does not match the expected schema.\n"
+            f"  expected: {spec.headers}\n"
+            f"  found:    {header}"
+        )
+
+    # Physical line where the previous record ended; header = 1.
+    prev_line = reader.line_num
+
+    for row in reader:
+        # reader.line_num is the physical line in the file, header = 1. A
+        # record may span several lines if a field contains a newline, so
+        # take the whole span rather than a single line.
+        line_no = reader.line_num
+        result.read += 1
+        raw = "".join(raw_lines[prev_line:line_no]).rstrip("\r\n")
+        prev_line = line_no
+
+        # 1. Blank row -- structurally valid CSV, semantically empty.
+        if not any(cell.strip() for cell in row):
+            result.skipped += 1
+            log(
+                line_no,
+                "blank_row",
+                None,
+                raw,
+                "Row skipped. Every field is empty, so there is nothing "
+                "to stage.",
+                "skipped",
+            )
+            continue
+
+        # 2. A second copy of the header pasted into the data. Two
+        #    exports concatenated.
+        if row == header:
+            result.skipped += 1
+            log(
+                line_no,
+                "repeated_header",
+                None,
+                raw,
+                "Row skipped. This is a duplicate of the header row "
+                "appearing inside the data, not a person.",
+                "skipped",
+            )
+            continue
+
+        # 3. Wrong number of fields -- genuinely unparseable.
+        if len(row) != len(header):
+            result.skipped += 1
+            log(
+                line_no,
+                "wrong_column_count",
+                None,
+                raw,
+                f"Row skipped. Expected {len(header)} fields, found "
+                f"{len(row)}. Cannot align fields to columns without "
+                "guessing.",
+                "skipped",
+            )
+            continue
+
+        # 4. Right field count, wrong field contents. A rotated row has
+        #    a valid arity, so only a per-column shape check finds it.
+        key_value = row[spec.key_index]
+        if not spec.key_check(key_value):
+            result.skipped += 1
+            key_header = spec.headers[spec.key_index]
+
+            action = (
+                f"Row skipped, not repaired. Expected {spec.key_expectation}, "
+                f"found {key_value!r}. Fields appear rotated one position "
+                "right."
             )
 
-        for row in reader:
-            # reader.line_num is the physical line in the file, header = 1.
-            line_no = reader.line_num
-            result.read += 1
-            raw = ",".join(row)
-
-            # 1. Blank row -- structurally valid CSV, semantically empty.
-            if not any(cell.strip() for cell in row):
-                result.skipped += 1
-                log(
-                    line_no,
-                    "blank_row",
-                    None,
-                    raw,
-                    "Row skipped. Every field is empty, so there is nothing "
-                    "to stage.",
-                    "skipped",
-                )
-                continue
-
-            # 2. A second copy of the header pasted into the data. Two
-            #    exports concatenated.
-            if row == header:
-                result.skipped += 1
-                log(
-                    line_no,
-                    "repeated_header",
-                    None,
-                    raw,
-                    "Row skipped. This is a duplicate of the header row "
-                    "appearing inside the data, not a person.",
-                    "skipped",
-                )
-                continue
-
-            # 3. Wrong number of fields -- genuinely unparseable.
-            if len(row) != len(header):
-                result.skipped += 1
-                log(
-                    line_no,
-                    "wrong_column_count",
-                    None,
-                    raw,
-                    f"Row skipped. Expected {len(header)} fields, found "
-                    f"{len(row)}. Cannot align fields to columns without "
-                    "guessing.",
-                    "skipped",
-                )
-                continue
-
-            # 4. Right field count, wrong field contents. A rotated row has
-            #    a valid arity, so only a per-column shape check finds it.
-            key_value = row[spec.key_index]
-            if not spec.key_check(key_value):
-                result.skipped += 1
-                key_header = spec.headers[spec.key_index]
-
-                action = (
-                    f"Row skipped, not repaired. Expected {spec.key_expectation}, "
-                    f"found {key_value!r}. Fields appear rotated one position "
-                    "right."
-                )
-
-                rotated = _rotate_left(row)
-                if spec.key_check(rotated[spec.key_index]):
-                    recovered = rotated[spec.key_index]
-                    action += (
-                        " Rotating left by one recovers a well-formed row, so "
-                        "this is repairable."
-                    )
-                    duplicate_of = staged_keys.get(recovered.strip().lower())
-                    if duplicate_of is not None:
-                        action += (
-                            f" The recovered key {recovered!r} already exists at "
-                            f"line {duplicate_of}, so repairing this row would "
-                            "add no new person."
-                        )
+            rotated = _rotate_left(row)
+            if spec.key_check(rotated[spec.key_index]):
+                recovered = rotated[spec.key_index]
                 action += (
-                    " Deferred to Phase 2: Phase 1 makes no judgment calls."
+                    " Rotating left by one recovers a well-formed row, so "
+                    "this is repairable."
                 )
+                duplicate_of = staged_keys.get(recovered.strip().lower())
+                if duplicate_of is not None:
+                    action += (
+                        f" The recovered key {recovered!r} already exists at "
+                        f"line {duplicate_of}, so repairing this row would "
+                        "add no new person."
+                    )
+            action += " Deferred to Phase 2: Phase 1 makes no judgment calls."
 
-                log(
-                    line_no,
-                    "column_shift",
-                    key_header,
-                    raw,
-                    action,
-                    "flagged",
-                )
-                continue
-
-            # Row is structurally sound. Stage it verbatim -- no strip(), no
-            # case folding, no type conversion. Trailing whitespace in
-            # 'Noida ' is a real finding and must survive to Phase 2.
-            session.add(
-                spec.model(
-                    source_row_number=line_no,
-                    **dict(zip(spec.attrs, row)),
-                )
+            log(
+                line_no,
+                "column_shift",
+                key_header,
+                raw,
+                action,
+                "flagged",
             )
-            staged_keys.setdefault(key_value.strip().lower(), line_no)
-            result.loaded += 1
+            continue
+
+        # Row is structurally sound. Stage it verbatim -- no strip(), no
+        # case folding, no type conversion. Trailing whitespace in
+        # 'Noida ' is a real finding and must survive to Phase 2.
+        session.add(
+            spec.model(
+                source_row_number=line_no,
+                **dict(zip(spec.attrs, row)),
+            )
+        )
+        staged_keys.setdefault(key_value.strip().lower(), line_no)
+        result.loaded += 1
 
     return result
 
