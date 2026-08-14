@@ -47,9 +47,18 @@ numeric casting at ingestion. The raw value must survive so it can be quoted
 in the data issues report.
 
 Every cleaning, matching, skipping or merging decision writes a row into
-data_issues (source_file, row_number, issue_type, raw_value, action_taken,
-detected_at). That table is a graded deliverable, treat it as important as
-the code.
+data_issues (source_file, row_number, issue_type, column_name, raw_value,
+action_taken, severity, detected_at). That table is a graded deliverable,
+treat it as important as the code.
+
+column_name is null for row level issues like a blank row or a repeated
+header, which do not belong to any single column.
+
+severity is exactly three values:
+  skipped   the row was dropped and no judgment was required
+  repaired  a value was changed
+  flagged   a judgment call was made, and the raw value survives in the log
+            so the call can be reviewed
 
 ## Repo layout
 /data      the three source CSVs
