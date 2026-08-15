@@ -1,0 +1,179 @@
+{
+  "name": "CSV duplicate check against the merged database",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "duplicate-check",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-220, 300],
+      "webhookId": "a1b2c3d4-0001-4000-8000-00000000000a"
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "binaryPropertyName": "file",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Extract From File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/api/lookup",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "name": "Lookup In Database",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-found",
+              "leftValue": "={{ $json.found }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000004",
+      "name": "Already In Database?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { \"status\": \"duplicate\", \"name\": $('Extract From File').item.json.name, \"phone\": $('Extract From File').item.json.phone, \"email\": $('Extract From File').item.json.email, \"matched_on\": $json.matched_on, \"person\": $json.person } }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0005-4000-8000-000000000005",
+      "name": "Mark Duplicate",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [680, 180]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { \"status\": \"new\", \"name\": $('Extract From File').item.json.name, \"phone\": $('Extract From File').item.json.phone, \"email\": $('Extract From File').item.json.email, \"matched_on\": null, \"person\": null } }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0006-4000-8000-000000000006",
+      "name": "Mark New",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [680, 420]
+    },
+    {
+      "parameters": {
+        "numberInputs": 2,
+        "options": {}
+      },
+      "id": "a1b2c3d4-0007-4000-8000-000000000007",
+      "name": "Merge Branches",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build the duplicate alert from every checked row.\n// The lookup endpoint only answered \"does this person exist?\".\n// Deciding what that means, and what the alert says, happens here.\n\nconst rows = $input.all().map(item => item.json);\n\nconst duplicates = rows.filter(row => row.status === 'duplicate');\nconst fresh = rows.filter(row => row.status === 'new');\n\nreturn [{\n  json: {\n    alert: duplicates.length > 0\n      ? `${duplicates.length} of ${rows.length} incoming rows already exist in the database.`\n      : `No duplicates. All ${rows.length} rows are new people.`,\n    checked: rows.length,\n    duplicates: duplicates.length,\n    new: fresh.length,\n    alerts: duplicates.map(row => ({\n      name: row.name,\n      submitted_phone: row.phone,\n      submitted_email: row.email || null,\n      matched_on: row.matched_on,\n      collides_with: row.person\n    })),\n    new_people: fresh.map(row => ({\n      name: row.name,\n      phone: row.phone,\n      email: row.email || null\n    }))\n  }\n}];"
+      },
+      "id": "a1b2c3d4-0008-4000-8000-000000000008",
+      "name": "Build Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json, null, 2) }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0009-4000-8000-000000000009",
+      "name": "Send Alert",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Extract From File", "type": "main", "index": 0 }]]
+    },
+    "Extract From File": {
+      "main": [[{ "node": "Lookup In Database", "type": "main", "index": 0 }]]
+    },
+    "Lookup In Database": {
+      "main": [[{ "node": "Already In Database?", "type": "main", "index": 0 }]]
+    },
+    "Already In Database?": {
+      "main": [
+        [{ "node": "Mark Duplicate", "type": "main", "index": 0 }],
+        [{ "node": "Mark New", "type": "main", "index": 0 }]
+      ]
+    },
+    "Mark Duplicate": {
+      "main": [[{ "node": "Merge Branches", "type": "main", "index": 0 }]]
+    },
+    "Mark New": {
+      "main": [[{ "node": "Merge Branches", "type": "main", "index": 1 }]]
+    },
+    "Merge Branches": {
+      "main": [[{ "node": "Build Alert", "type": "main", "index": 0 }]]
+    },
+    "Build Alert": {
+      "main": [[{ "node": "Send Alert", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {},
+  "meta": {
+    "instanceId": "consultbae-assignment-task2"
+  },
+  "tags": []
+}
