@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Submit a recording</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; }
+    label { display: block; margin-top: 1rem; font-weight: 600; }
+    input[type=text], input[type=tel], input[type=file] { width: 100%; padding: .5rem; margin-top: .25rem; }
+    button { padding: .6rem 1rem; margin-right: .5rem; margin-top: .5rem; cursor: pointer; }
+    .error { background: #ffe6e6; border: 1px solid #cc0000; padding: .75rem; margin-bottom: 1rem; }
+    .notice { background: #fff8e0; border: 1px solid #cc9900; padding: .75rem; margin-top: 1rem; }
+    fieldset { margin-top: 1.5rem; }
+    nav { margin-bottom: 1.5rem; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <nav><a href="/submissions">View all submissions &rarr;</a></nav>
+
+  <h1>Submit an audio recording</h1>
+
+  {% if error %}
+    <p class="error"><strong>Could not submit:</strong> {{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/submit" enctype="multipart/form-data" id="form">
+    <input type="hidden" name="capture_mode" id="capture_mode" value="upload">
+
+    <label for="name">Name</label>
+    <input type="text" id="name" name="name" required maxlength="200">
+
+    <label for="phone">Phone number</label>
+    <input type="tel" id="phone" name="phone" required
+           placeholder="9000000254 or +91-9000000254">
+
+    <fieldset>
+      <legend>Option 1 &mdash; record in the browser</legend>
+      <div id="recorder">
+        <button type="button" id="start">Start recording</button>
+        <button type="button" id="stop" disabled>Stop</button>
+        <span id="status"></span>
+        <div><audio id="preview" controls class="hidden"></audio></div>
+      </div>
+      <p id="recorder-unavailable" class="notice hidden">
+        Recording is not available in this browser, or microphone access was
+        refused. You can still upload an audio file below.
+      </p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Option 2 &mdash; upload a file</legend>
+      <label for="audio">Audio file</label>
+      <input type="file" id="audio" name="audio" accept="audio/*">
+      <p><small>Maximum 25 MB. wav, mp3, m4a, ogg, webm, flac, aac.</small></p>
+    </fieldset>
+
+    <button type="submit">Submit</button>
+  </form>
+
+<script>
+// The upload path is plain HTML and works with this script absent, broken,
+// or blocked. Everything below only ADDS the recording option, and any
+// failure falls back to the upload form rather than leaving a dead button.
+(function () {
+  var startButton = document.getElementById('start');
+  var stopButton = document.getElementById('stop');
+  var statusText = document.getElementById('status');
+  var preview = document.getElementById('preview');
+  var fileInput = document.getElementById('audio');
+  var captureMode = document.getElementById('capture_mode');
+
+  function disableRecording() {
+    document.getElementById('recorder').classList.add('hidden');
+    document.getElementById('recorder-unavailable').classList.remove('hidden');
+  }
+
+  var canRecord = navigator.mediaDevices &&
+                  navigator.mediaDevices.getUserMedia &&
+                  window.MediaRecorder &&
+                  window.DataTransfer;
+
+  if (!canRecord) {
+    disableRecording();
+    return;
+  }
+
+  var recorder = null;
+  var chunks = [];
+
+  startButton.addEventListener('click', function () {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      chunks = [];
+      recorder = new MediaRecorder(stream);
+
+      recorder.addEventListener('dataavailable', function (event) {
+        if (event.data && event.data.size > 0) { chunks.push(event.data); }
+      });
+
+      recorder.addEventListener('stop', function () {
+        stream.getTracks().forEach(function (track) { track.stop(); });
+
+        var type = (recorder.mimeType || 'audio/webm').split(';')[0];
+        var blob = new Blob(chunks, { type: type });
+        var extension = type === 'audio/mp4' ? '.mp4' : '.webm';
+
+        // Put the recording into the file input so ONE server-side code
+        // path handles both recordings and uploads.
+        var file = new File([blob], 'recording' + extension, { type: type });
+        var holder = new DataTransfer();
+        holder.items.add(file);
+        fileInput.files = holder.files;
+
+        captureMode.value = 'recording';
+        preview.src = URL.createObjectURL(blob);
+        preview.classList.remove('hidden');
+        statusText.textContent = ' Recorded ' + Math.round(blob.size / 1024) + ' KB. Ready to submit.';
+      });
+
+      recorder.start();
+      startButton.disabled = true;
+      stopButton.disabled = false;
+      statusText.textContent = ' Recording…';
+    }).catch(function () {
+      // Permission refused, or no microphone. Upload still works.
+      disableRecording();
+    });
+  });
+
+  stopButton.addEventListener('click', function () {
+    if (recorder && recorder.state !== 'inactive') { recorder.stop(); }
+    startButton.disabled = false;
+    stopButton.disabled = true;
+  });
+
+  // If the user picks a file by hand after recording, it is an upload again.
+  fileInput.addEventListener('change', function () {
+    if (captureMode.value === 'recording') { captureMode.value = 'upload'; }
+  });
+})();
+</script>
+</body>
+</html>

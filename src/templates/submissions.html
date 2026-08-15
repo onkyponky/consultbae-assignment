@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>All submissions</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; }
+    nav { margin-bottom: 1.5rem; }
+    table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+    th, td { border: 1px solid #ccc; padding: .4rem .5rem; text-align: left; vertical-align: top; }
+    th { background: #f0f0f0; }
+    .missing { color: #999; font-style: italic; }
+    .derived { background: #fff3cd; padding: 0 .25rem; border: 1px solid #cc9900; font-size: .8rem; }
+    .origin-app { background: #e0f0ff; padding: 0 .3rem; border: 1px solid #3388cc; font-size: .8rem; }
+    .origin-csv { background: #e6ffe6; padding: 0 .3rem; border: 1px solid #33aa33; font-size: .8rem; }
+    .clean { color: #1a7f1a; font-weight: 600; }
+    .fair { color: #b58100; font-weight: 600; }
+    .noisy { color: #cc0000; font-weight: 600; }
+    audio { width: 12rem; }
+    caption { text-align: left; margin-bottom: .75rem; color: #555; }
+  </style>
+</head>
+<body>
+  <nav><a href="/">&larr; Submit another recording</a></nav>
+
+  <h1>All submissions ({{ rows | length }})</h1>
+
+  {% if not rows %}
+    <p>Nothing submitted yet. <a href="/">Record or upload something</a>.</p>
+  {% else %}
+  <table>
+    <caption>
+      Every row links to a person in the same database Task 1 built.
+      <span class="origin-csv">csv merge</span> means the person came from the
+      three source files; <span class="origin-app">audio app</span> means this
+      app created them because the phone matched nobody.
+    </caption>
+    <thead>
+      <tr>
+        <th>Play</th>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Linked person</th>
+        <th>Mode</th>
+        <th>Duration</th>
+        <th>Sample rate</th>
+        <th>Bitrate</th>
+        <th>Loudness (dB)</th>
+        <th>LUFS</th>
+        <th>Noise</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for submission, person in rows %}
+      <tr>
+        <td><audio controls preload="none" src="/audio/{{ submission.id }}"></audio></td>
+
+        <td>{{ submission.submitted_name }}</td>
+
+        <td>
+          {{ submission.submitted_phone }}
+          {% if submission.submitted_phone != submission.matched_phone %}
+            <br><small class="missing">matched as {{ submission.matched_phone }}</small>
+          {% endif %}
+        </td>
+
+        <td>
+          #{{ person.id }} {{ person.full_name }}<br>
+          {% if person.source_origin == 'audio_app' %}
+            <span class="origin-app">audio app</span>
+          {% else %}
+            <span class="origin-csv">csv merge</span>
+          {% endif %}
+        </td>
+
+        <td>{{ submission.capture_mode }}</td>
+
+        <td>
+          {% if submission.duration_seconds is not none %}
+            {{ '%.2f'|format(submission.duration_seconds) }} s
+          {% else %}<span class="missing">unknown</span>{% endif %}
+        </td>
+
+        <td>
+          {% if submission.sample_rate_hz is not none %}
+            {{ '%.1f'|format(submission.sample_rate_hz / 1000) }} kHz
+          {% else %}<span class="missing">unknown</span>{% endif %}
+        </td>
+
+        <td>
+          {% if submission.bitrate_bps is not none %}
+            {{ (submission.bitrate_bps / 1000) | round | int }} kbps
+            {% if submission.bitrate_is_derived %}
+              <br><span class="derived" title="{{ submission.bitrate_note }}">derived</span>
+            {% endif %}
+          {% else %}<span class="missing">unknown</span>{% endif %}
+        </td>
+
+        <td>
+          {% if submission.rms_level_db is not none %}
+            {{ '%.1f'|format(submission.rms_level_db) }} dB
+          {% else %}<span class="missing">unknown</span>{% endif %}
+        </td>
+
+        <td>
+          {% if submission.loudness_lufs is not none %}
+            {{ '%.1f'|format(submission.loudness_lufs) }}
+          {% else %}<span class="missing">unknown</span>{% endif %}
+        </td>
+
+        <td>
+          {% if submission.noise_snr_db is not none %}
+            {{ '%.1f'|format(submission.noise_snr_db) }} dB<br>
+            <span class="{{ submission.quality_estimate }}">{{ submission.quality_estimate }}</span>
+          {% else %}<span class="missing">not estimated</span>{% endif %}
+        </td>
+      </tr>
+      {% if submission.probe_error %}
+      <tr>
+        <td colspan="11"><small class="missing">Extraction notes: {{ submission.probe_error }}</small></td>
+      </tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <p><small>
+    Bitrate marked <span class="derived">derived</span> was computed as
+    byte size &times; 8 &divide; duration, because the container declared no
+    bitrate. That is container bitrate including overhead, not the codec
+    bitrate. Hover it for the exact arithmetic.
+  </small></p>
+
+  <p><small>
+    The noise figure is RMS level minus the quietest window. It is a rough
+    estimate, not true signal-to-noise: it assumes the recording contains
+    pauses, so a clip with continuous speech and no gaps scores low even
+    when it is clean.
+  </small></p>
+  {% endif %}
+</body>
+</html>
