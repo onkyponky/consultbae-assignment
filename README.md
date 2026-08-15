@@ -13,13 +13,15 @@ was done about each and what would have broken had it been missed.
 |---|---|
 | **Data issues report** | **[DATA_ISSUES.md](DATA_ISSUES.md)** |
 | **Stuck log** | **[below](#stuck-log)** |
+| **Scaling note** | **[SCALING.md](SCALING.md)** |
 | **Video walkthrough** | _link to be added_ |
 
 - [x] Phase 1 — repo, schema, raw ingestion
 - [x] Phase 2 — normalisation, matching, merged person table
 - [x] Phase 3 — audio collection app
 - [x] Phase 4 — n8n duplicate-check flow
-- [ ] Phase 5 — video
+- [x] Phase 5 — data issues report, stuck log, scaling note
+- [ ] Video
 
 ---
 
@@ -268,12 +270,20 @@ until you stop, and it never goes back to patch the header. So the WebM file
 has no duration field, `<audio>` reads `duration === Infinity`, and it renders
 a dead seek bar.
 
-**What I searched:** `MediaRecorder webm duration Infinity` and
-`html audio element duration infinity blob`. _(replace with your actual
-searches)_
+**What I asked the LLM:** I described the symptom exactly as I saw it —
+*"trying to record audio but nothing happens"* — and sent a screenshot of the
+page. That framing was itself part of the problem: I had already decided it
+was a recording failure, and I had to be shown that the page was reporting
+`Recorded 67 KB` at the same time as the player showed `0:00`.
 
-**What I asked the LLM:** why an `<audio>` element shows `0:00 / 0:00` for a
-`MediaRecorder` blob when the blob clearly has bytes in it.
+Once it was clear the capture had worked, the question became the right one:
+why does an `<audio>` element show `0:00 / 0:00` for a `MediaRecorder` blob
+that demonstrably has bytes in it.
+
+Later I asked how to check whether the microphone was capturing anything at
+all rather than silence — *"I said 12345678, is there a way to check it
+somewhere or is it a problem?"* The answer was to read the extracted numbers
+back, which is the check described under "how I tested it" below.
 
 **What I rejected:** the first suggestion was to re-encode the blob in the
 browser to stamp a duration into it. That means shipping a WASM encoder to the
@@ -341,8 +351,15 @@ The Verma pair is caught by either key. **The Chopra pair is caught only by
 phone** — that `alt.` prefix makes the two email strings genuinely different,
 so deduplicating on email leaves him as two people.
 
-**What I asked the LLM:** how to decide between email and phone as the
-deduplication key when the file contains duplicates that disagree on each.
+**How I worked it:** I set the constraint up front, before any code — names
+must never merge people, because I had already spotted two different Arjun
+Mehtas and two different Deepak Nairs while reading the files. What I did not
+know was which key should deduplicate source 1 against *itself*.
+
+I asked for the merge logic to be written out in plain text before anything
+was implemented, so I could check the key choice against the actual rows
+rather than discover it afterwards in code. That review is where the `alt.`
+prefix surfaced, and it changed the answer — I had assumed email.
 
 **What I rejected:** fuzzy matching on names, which was the first thing
 suggested and is the trap this dataset is built around. The data contains
@@ -371,8 +388,16 @@ I had never wired a flow.
 The first wall was immediate: **n8n has no SQLite node.** My data is a local
 file, and there is nothing in the standard node set that opens one.
 
-**What I asked the LLM:** how to connect an n8n flow to a local SQLite
-database.
+**What I asked the LLM:** first, how to connect an n8n flow to a local SQLite
+database. Then, once the design was settled, something more basic —
+*"I don't know how n8n works, explain it to me step by step, what I have to
+put in there and what I should expect."* I was driving the browser myself, so
+I needed the concepts (nodes, items, the trigger, test URL versus production
+URL) before the clicking meant anything.
+
+When the flow did not respond I also asked flatly *"app not working, what can
+we do"*, which turned out to be the `0.0.0.0` misunderstanding described
+below.
 
 **What I rejected:**
 
