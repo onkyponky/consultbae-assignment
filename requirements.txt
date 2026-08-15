@@ -1,8 +1,11 @@
-# Phase 1 - ingestion only.
+# Phase 1 - ingestion.
 #
 # CSV reading uses the stdlib `csv` module deliberately, so pandas is not a
 # dependency here. See CLAUDE.md for the reasoning.
 SQLAlchemy==2.0.52
+
+# Phase 2 - normalisation test suite.
+pytest==9.1.1
 
 # Later phases will add a web framework and an audio metadata library
 # (Task 3). Not listed yet - nothing here is unused.
