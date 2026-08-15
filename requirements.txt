@@ -7,5 +7,16 @@ SQLAlchemy==2.0.52
 # Phase 2 - normalisation test suite.
 pytest==9.1.1
 
-# Later phases will add a web framework and an audio metadata library
-# (Task 3). Not listed yet - nothing here is unused.
+# Phase 3 - audio collection app.
+#
+# Audio metadata comes from the ffprobe and ffmpeg binaries via subprocess,
+# not from a Python audio library. pydub would only wrap the same calls and
+# librosa would pull in numpy and numba to recompute what astats already
+# reports. Neither is a dependency here.
+fastapi==0.141.1
+uvicorn==0.52.3
+Jinja2==3.1.6
+python-multipart==0.0.32
+
+# Later phases will add nothing further; the n8n flow (Task 2) is exported
+# JSON, not a Python package.
