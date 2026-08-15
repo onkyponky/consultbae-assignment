@@ -8,24 +8,29 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "id": "747aa094-0b20-4586-aed9-a9246bf5dd53",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-220, 300],
+      "position": [
+        -1040,
+        -128
+      ],
       "webhookId": "a1b2c3d4-0001-4000-8000-00000000000a"
     },
     {
       "parameters": {
-        "operation": "csv",
         "binaryPropertyName": "file",
         "options": {}
       },
-      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "id": "4167b90a-5cad-4a4b-b6a7-477b20b07452",
       "name": "Extract From File",
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1,
-      "position": [0, 300]
+      "position": [
+        -832,
+        -128
+      ]
     },
     {
       "parameters": {
@@ -45,11 +50,14 @@
         },
         "options": {}
       },
-      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "id": "76b26df8-d422-4894-9345-25b24e0441d3",
       "name": "Lookup In Database",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [220, 300]
+      "position": [
+        -608,
+        -128
+      ]
     },
     {
       "parameters": {
@@ -74,14 +82,16 @@
           ],
           "combinator": "and"
         },
-        "looseTypeValidation": true,
         "options": {}
       },
-      "id": "a1b2c3d4-0004-4000-8000-000000000004",
+      "id": "4a1bda06-1342-411e-94bd-94402715e957",
       "name": "Already In Database?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [440, 300]
+      "position": [
+        -384,
+        -128
+      ]
     },
     {
       "parameters": {
@@ -89,11 +99,14 @@
         "jsonOutput": "={{ { \"status\": \"duplicate\", \"name\": $('Extract From File').item.json.name, \"phone\": $('Extract From File').item.json.phone, \"email\": $('Extract From File').item.json.email, \"matched_on\": $json.matched_on, \"person\": $json.person } }}",
         "options": {}
       },
-      "id": "a1b2c3d4-0005-4000-8000-000000000005",
+      "id": "d5be0b88-4aee-4a84-9c93-6d3cfd313544",
       "name": "Mark Duplicate",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [680, 180]
+      "position": [
+        -144,
+        -240
+      ]
     },
     {
       "parameters": {
@@ -101,32 +114,38 @@
         "jsonOutput": "={{ { \"status\": \"new\", \"name\": $('Extract From File').item.json.name, \"phone\": $('Extract From File').item.json.phone, \"email\": $('Extract From File').item.json.email, \"matched_on\": null, \"person\": null } }}",
         "options": {}
       },
-      "id": "a1b2c3d4-0006-4000-8000-000000000006",
+      "id": "334e2b87-35f0-4511-aa19-93c12b79bc20",
       "name": "Mark New",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [680, 420]
+      "position": [
+        -144,
+        0
+      ]
     },
     {
-      "parameters": {
-        "numberInputs": 2,
-        "options": {}
-      },
-      "id": "a1b2c3d4-0007-4000-8000-000000000007",
+      "parameters": {},
+      "id": "80bf6202-4233-4558-8c08-83fa2aed9fee",
       "name": "Merge Branches",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [900, 300]
+      "position": [
+        80,
+        -128
+      ]
     },
     {
       "parameters": {
         "jsCode": "// Build the duplicate alert from every checked row.\n// The lookup endpoint only answered \"does this person exist?\".\n// Deciding what that means, and what the alert says, happens here.\n\nconst rows = $input.all().map(item => item.json);\n\nconst duplicates = rows.filter(row => row.status === 'duplicate');\nconst fresh = rows.filter(row => row.status === 'new');\n\nreturn [{\n  json: {\n    alert: duplicates.length > 0\n      ? `${duplicates.length} of ${rows.length} incoming rows already exist in the database.`\n      : `No duplicates. All ${rows.length} rows are new people.`,\n    checked: rows.length,\n    duplicates: duplicates.length,\n    new: fresh.length,\n    alerts: duplicates.map(row => ({\n      name: row.name,\n      submitted_phone: row.phone,\n      submitted_email: row.email || null,\n      matched_on: row.matched_on,\n      collides_with: row.person\n    })),\n    new_people: fresh.map(row => ({\n      name: row.name,\n      phone: row.phone,\n      email: row.email || null\n    }))\n  }\n}];"
       },
-      "id": "a1b2c3d4-0008-4000-8000-000000000008",
+      "id": "198212c5-ac19-4504-aa3f-37a36ab00147",
       "name": "Build Alert",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1120, 300]
+      "position": [
+        304,
+        -128
+      ]
     },
     {
       "parameters": {
@@ -134,46 +153,124 @@
         "responseBody": "={{ JSON.stringify($json, null, 2) }}",
         "options": {}
       },
-      "id": "a1b2c3d4-0009-4000-8000-000000000009",
+      "id": "176cad9b-de58-4e7b-a69d-58d23579341d",
       "name": "Send Alert",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1340, 300]
+      "position": [
+        528,
+        -128
+      ]
     }
   ],
+  "pinData": {},
   "connections": {
     "Webhook": {
-      "main": [[{ "node": "Extract From File", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Extract From File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Extract From File": {
-      "main": [[{ "node": "Lookup In Database", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Lookup In Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Lookup In Database": {
-      "main": [[{ "node": "Already In Database?", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Already In Database?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Already In Database?": {
       "main": [
-        [{ "node": "Mark Duplicate", "type": "main", "index": 0 }],
-        [{ "node": "Mark New", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Mark Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark New",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Mark Duplicate": {
-      "main": [[{ "node": "Merge Branches", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Merge Branches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Mark New": {
-      "main": [[{ "node": "Merge Branches", "type": "main", "index": 1 }]]
+      "main": [
+        [
+          {
+            "node": "Merge Branches",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
     },
     "Merge Branches": {
-      "main": [[{ "node": "Build Alert", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Build Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Build Alert": {
-      "main": [[{ "node": "Send Alert", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Send Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "pinData": {},
-  "meta": {
-    "instanceId": "consultbae-assignment-task2"
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   },
+  "versionId": "0cfe718a-2120-4521-a5a7-edb5523cb630",
+  "meta": {
+    "instanceId": "13cacad8f2a7dbcd8db260ec5dd774a85bf9c2194a7c8206c9fb2df596500f72"
+  },
+  "nodeGroups": [],
+  "id": "UmdJtX0MQzVf5R0b",
   "tags": []
 }
