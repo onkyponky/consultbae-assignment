@@ -467,6 +467,16 @@ def merge(session: Session) -> MergeResult:
     # ---- step 5: orphans become their own people ----
     # These rows describe someone source1 never saw. They are still real
     # people, so they get a person record; they simply have fewer fields.
+    #
+    # The name is stored with the source's own casing, which is why
+    # `MANISH BHATIA` and `DIVYA CHOPRA` appear in caps in `person` while
+    # everyone else is title case. That is deliberate. Title casing here
+    # would be inventing a canonical form for a name we have only seen
+    # once, with no second source to arbitrate against -- and `.title()`
+    # actively corrupts real names: `McDonald` becomes `Mcdonald`,
+    # `van der Berg` becomes `Van Der Berg`. Preserving what the source
+    # actually wrote is the honest choice. Matched people do not have this
+    # problem because source1 supplies the name.
     s2_people: dict[str, Person] = {}
     for row in s2_orphans:
         person = Person(
