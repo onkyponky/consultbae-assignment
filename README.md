@@ -106,30 +106,85 @@ any unused number to watch the app create one.
 
 ### 3. The n8n duplicate-check flow
 
-The flow calls a **read-only** lookup endpoint on the app, so the app must be
-running and bound to `0.0.0.0` — n8n runs in a container and cannot reach a
-localhost-only bind:
+The flow calls a **read-only** lookup endpoint on the app. Two things about
+the setup are easy to get wrong, so they are called out below: the app must
+bind `0.0.0.0`, and the webhook has to be armed by hand before every run.
+
+**Step 1 — start the app, bound to every interface.** n8n runs inside a
+container, where `127.0.0.1` means the container itself. A default
+localhost-only bind refuses its connections.
 
 ```bash
 python -m uvicorn app:app --app-dir src --host 0.0.0.0 --port 8000
+```
+
+Leave it running. Note that you still browse to `http://127.0.0.1:8000` —
+the `0.0.0.0` uvicorn prints is a bind address, not a URL.
+
+**Step 2 — start n8n** in a second terminal, and leave that running too.
+
+```bash
 docker run -it --rm -p 5678:5678 -v n8n_data:/home/node/.n8n n8nio/n8n
 ```
 
-Open `http://localhost:5678`, import [`n8n/workflow.json`](n8n/workflow.json),
-click **Execute workflow**, then post the test CSV:
+**Step 3 — import the flow.** Open `http://localhost:5678`, then
+`⋯` → *Import from File* → [`n8n/workflow.json`](n8n/workflow.json). Nine
+connected nodes appear.
+
+**Step 4 — generate a batch** (optional; a fixed test file is also provided).
 
 ```bash
-curl.exe -F "file=@n8n/test_incoming.csv" http://localhost:5678/webhook-test/duplicate-check
+python n8n/make_batch.py
 ```
 
-[`n8n/test_incoming.csv`](n8n/test_incoming.csv) contains a deliberate mix: two
-exact duplicates, one row matching **only after phone normalisation**
-(`+91-9000000287`, no email), and two genuinely new people. Expected response:
-`3 of 5 incoming rows already exist in the database.`
+**Step 5 — arm the webhook.** In the n8n editor, click the orange
+**Execute workflow** button. This is a mouse click, not a command — there is
+no terminal equivalent. n8n's test webhook registers only when that button is
+pressed, and unregisters after a single request, so it must be clicked again
+before every run.
 
-The endpoint answers one question — *does this person exist?* The CSV parsing,
-the per-row loop, the branch and the alert are all n8n nodes. Deliberately:
-the brief scores a pure-code solution zero.
+**Step 6 — send the CSV** in a third terminal.
+
+```bash
+./n8n/run_check.ps1
+```
+
+Or without the helper script:
+
+```bash
+curl.exe -F "file=@n8n/incoming_batch.csv" http://localhost:5678/webhook-test/duplicate-check
+```
+
+If the response is `The requested webhook "duplicate-check" is not
+registered`, step 5 was missed or the webhook has already been used once.
+
+#### The test data
+
+[`n8n/test_incoming.csv`](n8n/test_incoming.csv) is a fixed set of 13 rows
+chosen to exercise the matching rules: three rows named **Arjun Mehta**
+resolving to three *different* people, two **Deepak Nairs**, one row matching
+only after phone normalisation, one uppercase email, and one row whose name
+exists in the database but whose phone does not — which is correctly reported
+as new, because names are never a key.
+
+[`n8n/make_batch.py`](n8n/make_batch.py) generates a different batch on every
+run: real people drawn from all three source files, rewritten into the messy
+phone and email shapes those files actually use, mixed with invented people
+and shuffled. Every run appends its contents and expected result to
+[`n8n/batch_log.md`](n8n/batch_log.md), so any run can be checked afterwards
+against what n8n reported. Expected outcomes there are computed by running
+each row through the same normalisation the merge used — not assumed.
+
+`run_check.ps1` only formats the reply for readability; the duplicate checking
+itself happens entirely in the n8n nodes.
+
+#### Why it is split this way
+
+The endpoint answers one question — *does this person exist?* — and writes
+nothing. The CSV parsing, the per-row loop, the branch and the alert are all
+n8n nodes. n8n has no SQLite node, so the endpoint stands in for the database
+driver it lacks; it is not where the automation's logic lives. The brief
+scores a pure-code solution zero.
 
 ---
 
