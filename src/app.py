@@ -29,14 +29,19 @@ import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+)
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from audio_meta import extract
 from models import AudioSubmission, Base, DataIssue, Person
-from normalise import normalise_phone
+from normalise import normalise_email, normalise_phone
 
 SRC_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SRC_DIR.parent
@@ -299,6 +304,73 @@ def submissions(request: Request):
             "submissions.html",
             {"rows": rows},
         )
+
+
+@app.get("/api/lookup")
+def api_lookup(phone: str | None = None, email: str | None = None):
+    """Read-only: does a person with this phone or email already exist?
+
+    This exists so the n8n duplicate-check flow can ask the database a
+    question. It answers ONLY that question -- it decides nothing, writes
+    nothing, and sends no alert. Deciding what a hit means and who to tell
+    is the flow's job, which is the whole point of building Task 2 in a
+    no-code tool rather than in Python.
+
+    Matching reuses `normalise_phone` and `normalise_email` from Phase 2.
+    No matching rule is reimplemented here.
+
+    Phone is tried before email because phone is the stronger key: it is
+    what caught the `alt.nikhil.chopra70@` duplicate that email-only
+    matching missed during the merge.
+    """
+    if phone is None and email is None:
+        return JSONResponse(
+            {"error": "Pass at least one of phone or email."}, status_code=400
+        )
+
+    phone_key = normalise_phone(phone) if phone else None
+    email_key = normalise_email(email) if email else None
+
+    answer: dict = {
+        "query": {"phone": phone, "email": email},
+        "normalised": {"phone": phone_key, "email": email_key},
+        "found": False,
+        "matched_on": None,
+        "person": None,
+    }
+
+    if phone_key is None and email_key is None:
+        # A row that carried values but none of them usable. Reported as a
+        # miss with a note rather than a 400, so one unusable row does not
+        # abort the whole CSV run in n8n.
+        answer["note"] = "Neither phone nor email was usable as a key."
+        return answer
+
+    with get_session() as session:
+        person = None
+        if phone_key:
+            person = session.scalar(
+                select(Person).where(Person.primary_phone == phone_key).order_by(Person.id)
+            )
+            if person is not None:
+                answer["matched_on"] = "phone"
+
+        if person is None and email_key:
+            person = session.scalar(
+                select(Person).where(Person.primary_email == email_key).order_by(Person.id)
+            )
+            if person is not None:
+                answer["matched_on"] = "email"
+
+        if person is not None:
+            answer["found"] = True
+            answer["person"] = {
+                "id": person.id,
+                "full_name": person.full_name,
+                "source_origin": person.source_origin,
+            }
+
+    return answer
 
 
 @app.get("/audio/{submission_id}")
