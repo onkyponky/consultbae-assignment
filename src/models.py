@@ -155,6 +155,14 @@ class Person(Base):
     applied_date: Mapped[date | None] = mapped_column(Date)
     applied_date_raw: Mapped[str | None] = mapped_column(Text)
 
+    # Where this person came from. The merge produces `csv_merge`; the audio
+    # app produces `audio_app` when someone submits a recording from a phone
+    # number none of the three CSVs contained. Without this a reviewer
+    # cannot tell the 60 merged people from anyone the app invented.
+    source_origin: Mapped[str] = mapped_column(
+        Text, nullable=False, default="csv_merge", server_default="csv_merge"
+    )
+
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=func.now())
 
@@ -166,6 +174,10 @@ class Person(Base):
         CheckConstraint(
             "rate_period IS NULL OR rate_period IN ('hourly', 'monthly')",
             name="ck_person_rate_period",
+        ),
+        CheckConstraint(
+            "source_origin IN ('csv_merge', 'audio_app')",
+            name="ck_person_source_origin",
         ),
     )
 
@@ -240,6 +252,69 @@ class PersonReviewCandidate(Base):
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class AudioSubmission(Base):
+    """One audio recording submitted through the collection app.
+
+    `person_id` is NOT NULL on purpose: the assignment requires a submission
+    to land in the same database Task 1 built, so every recording is
+    attached to somebody. When the phone matches nobody, the app creates a
+    person with `source_origin='audio_app'` rather than orphaning the file.
+
+    The submitted name and phone are kept exactly as typed, beside the
+    normalised key that was actually used to match -- the same pattern as
+    `Person.city_raw` sitting beside `Person.city`.
+    """
+
+    __tablename__ = "audio_submission"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    person_id: Mapped[int] = mapped_column(
+        ForeignKey("person.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    submitted_name: Mapped[str] = mapped_column(Text, nullable=False)
+    submitted_phone: Mapped[str] = mapped_column(Text, nullable=False)
+    matched_phone: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # The name on disk is a uuid we generate. The browser's filename is
+    # recorded for reference but is never used to build a path.
+    stored_filename: Mapped[str] = mapped_column(Text, nullable=False)
+    original_filename: Mapped[str | None] = mapped_column(Text)
+    content_type: Mapped[str | None] = mapped_column(Text)
+    byte_size: Mapped[int | None] = mapped_column(Integer)
+    capture_mode: Mapped[str] = mapped_column(Text, nullable=False)
+
+    duration_seconds: Mapped[float | None] = mapped_column(Float)
+    sample_rate_hz: Mapped[int | None] = mapped_column(Integer)
+
+    # Bitrate is often absent from a browser recording's container, so it
+    # gets derived from size and duration. The flag and the note record that
+    # the number is an arithmetic result, not something the file declared.
+    bitrate_bps: Mapped[int | None] = mapped_column(Integer)
+    bitrate_is_derived: Mapped[bool] = mapped_column(Boolean, default=False)
+    bitrate_note: Mapped[str | None] = mapped_column(Text)
+
+    # Both are stored: LUFS is the perceptually weighted standard, and
+    # rms_level_db is the plain dB figure the assignment literally asks for.
+    loudness_lufs: Mapped[float | None] = mapped_column(Float)
+    rms_level_db: Mapped[float | None] = mapped_column(Float)
+
+    noise_snr_db: Mapped[float | None] = mapped_column(Float)
+    quality_estimate: Mapped[str | None] = mapped_column(Text)
+
+    #: Set when extraction failed; the file is still stored and listed.
+    probe_error: Mapped[str | None] = mapped_column(Text)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        CheckConstraint(
+            "capture_mode IN ('recording', 'upload')",
+            name="ck_audio_submission_capture_mode",
+        ),
+    )
 
 
 class DataIssue(Base):
