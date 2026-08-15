@@ -71,9 +71,33 @@
   var fileInput = document.getElementById('audio');
   var captureMode = document.getElementById('capture_mode');
 
-  function disableRecording() {
+  function disableRecording(reason) {
     document.getElementById('recorder').classList.add('hidden');
-    document.getElementById('recorder-unavailable').classList.remove('hidden');
+    var notice = document.getElementById('recorder-unavailable');
+    notice.classList.remove('hidden');
+    if (reason) {
+      // Say WHY rather than leaving the user guessing at a vanished button.
+      notice.textContent = reason + ' You can still upload an audio file below.';
+    }
+  }
+
+  // MediaRecorder writes a live stream with no duration in the container, so
+  // <audio> reports duration Infinity and renders 0:00 / 0:00 with a dead
+  // seek bar. Seeking far past the end forces the browser to decode to the
+  // real end and settle on a true duration; then we rewind to the start.
+  // This is the same missing-duration problem the server solves by decoding
+  // the file with ffmpeg.
+  function fixPreviewDuration(audio) {
+    audio.addEventListener('loadedmetadata', function once() {
+      audio.removeEventListener('loadedmetadata', once);
+      if (audio.duration !== Infinity) { return; }
+
+      audio.currentTime = 1e101;
+      audio.addEventListener('timeupdate', function settle() {
+        audio.removeEventListener('timeupdate', settle);
+        audio.currentTime = 0;
+      });
+    });
   }
 
   var canRecord = navigator.mediaDevices &&
@@ -115,16 +139,24 @@
         captureMode.value = 'recording';
         preview.src = URL.createObjectURL(blob);
         preview.classList.remove('hidden');
-        statusText.textContent = ' Recorded ' + Math.round(blob.size / 1024) + ' KB. Ready to submit.';
+        fixPreviewDuration(preview);
+        statusText.textContent = ' Recorded ' + Math.round(blob.size / 1024) +
+                                ' KB. Ready to submit.';
       });
 
       recorder.start();
       startButton.disabled = true;
       stopButton.disabled = false;
       statusText.textContent = ' Recording…';
-    }).catch(function () {
+    }).catch(function (error) {
       // Permission refused, or no microphone. Upload still works.
-      disableRecording();
+      var reason = 'Recording is not available.';
+      if (error && error.name === 'NotAllowedError') {
+        reason = 'Microphone access was refused.';
+      } else if (error && error.name === 'NotFoundError') {
+        reason = 'No microphone was found.';
+      }
+      disableRecording(reason);
     });
   });
 
