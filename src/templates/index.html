@@ -88,8 +88,7 @@
   // This is the same missing-duration problem the server solves by decoding
   // the file with ffmpeg.
   function fixPreviewDuration(audio) {
-    audio.addEventListener('loadedmetadata', function once() {
-      audio.removeEventListener('loadedmetadata', once);
+    function settleDuration() {
       if (audio.duration !== Infinity) { return; }
 
       audio.currentTime = 1e101;
@@ -97,7 +96,16 @@
         audio.removeEventListener('timeupdate', settle);
         audio.currentTime = 0;
       });
+    }
+
+    audio.addEventListener('loadedmetadata', function once() {
+      audio.removeEventListener('loadedmetadata', once);
+      settleDuration();
     });
+
+    // If the metadata is already loaded, the event above will never fire,
+    // so handle that case directly. HAVE_METADATA is readyState 1.
+    if (audio.readyState >= 1) { settleDuration(); }
   }
 
   var canRecord = navigator.mediaDevices &&
@@ -137,9 +145,12 @@
         fileInput.files = holder.files;
 
         captureMode.value = 'recording';
+        // Attach the duration fix BEFORE setting src. A blob URL loads its
+        // metadata almost instantly, so a listener added afterwards can miss
+        // the event entirely.
+        fixPreviewDuration(preview);
         preview.src = URL.createObjectURL(blob);
         preview.classList.remove('hidden');
-        fixPreviewDuration(preview);
         statusText.textContent = ' Recorded ' + Math.round(blob.size / 1024) +
                                 ' KB. Ready to submit.';
       });
