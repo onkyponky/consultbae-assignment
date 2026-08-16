@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Database artifacts (rebuilt by the pipeline; do not commit)
+db/*.db
+db/*.sqlite
+db/*.sqlite3
+
+# Audio uploads (Task 3)
+uploads/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+echo NOTES.md >> .gitignore

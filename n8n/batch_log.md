@@ -214,3 +214,87 @@ computed against the `person` table, not assumed.
 | 13 | Vikram Saxena | - | 09000000113 | duplicate | phone -> #4 Vikram Saxena |
 | 14 | Karan Bhatia | karan.bhatia32@mailtest.example.org | - | duplicate | email -> #14 Karan Bhatia |
 
+## 2026-08-16 03:03:58  (seed 9642)
+
+14 rows: **10 already in the database**, 4 new.
+
+| # | name | email | phone | expected | matched by |
+|---|---|---|---|---|---|
+| 1 | Pooja Gupta | pooja.gupta57@mailtest.example.org | - | duplicate | email -> #23 Pooja Gupta |
+| 2 | Ishaan Pillai | ishaan.pillai@example.com | 9488578194 | new | not in database |
+| 3 | Karan Chopra | - | +919000000245 | duplicate | phone -> #59 Karan Chopra |
+| 4 | Deepak Nair | deepak.nair44@example.com | 9000000296 | duplicate | phone -> #31 Deepak Nair |
+| 5 | Priya Nair | priya.nair70@example.com | +919000000222 | duplicate | phone -> #9 Priya Nair |
+| 6 | Isha Chopra | ISHA.CHOPRA95@MAILTEST.EXAMPLE.ORG | - | duplicate | email -> #8 Isha Chopra |
+| 7 | Aditya Kulkarni | aditya.kulkarni@example.com | 9512820952 | new | not in database |
+| 8 | Arjun Mehta | arjun.mehta77@mailtest.example.org | - | duplicate | email -> #41 Arjun Mehta |
+| 9 | Ananya Bakshi | ananya.bakshi@example.com | - | new | not in database |
+| 10 | Varun Saxena | varun.saxena21@example.in | - | duplicate | email -> #28 Varun Saxena |
+| 11 | Tanvi Kapoor | tanvi.kapoor38@example.com | - | duplicate | email -> #50 Tanvi Kapoor |
+| 12 | Dhruv Bakshi | dhruv.bakshi@example.com | - | new | not in database |
+| 13 | MANISH BHATIA | - | +919000000161 | duplicate | phone -> #57 MANISH BHATIA |
+| 14 | Sneha Chopra | SNEHA.CHOPRA99@EXAMPLE.IN | - | duplicate | email -> #21 Sneha Chopra |
+
+## 2026-08-16 03:07:15  (seed 3539)
+
+14 rows: **10 already in the database**, 4 new.
+
+| # | name | email | phone | expected | matched by |
+|---|---|---|---|---|---|
+| 1 | Isha Chopra | - | +919000000138 | duplicate | phone -> #8 Isha Chopra |
+| 2 | Deepak Mehta | - | +91-9000000116 | duplicate | phone -> #22 Deepak Mehta |
+| 3 | Isha Chopra | isha.chopra95@mailtest.example.org | - | duplicate | email -> #8 Isha Chopra |
+| 4 | Varun Jain | varun.jain29@example.com | - | duplicate | email -> #18 Varun Jain |
+| 5 | Kabir Kulkarni | kabir.kulkarni@example.com | - | new | not in database |
+| 6 | Tara Iyer | - | 9806531080 | new | not in database |
+| 7 | Nikhil Chopra | - | 9000000103 | duplicate | phone -> #26 Nikhil Chopra |
+| 8 | RAHUL MALHOTRA | - | 919000000260 | duplicate | phone -> #11 Rahul Malhotra |
+| 9 | Tanvi Kapoor | tanvi.kapoor38@example.com | - | duplicate | email -> #50 Tanvi Kapoor |
+| 10 | Tara Pillai | tara.pillai@example.com | 9626370513 | new | not in database |
+| 11 | Rahul Jain | RAHUL.JAIN34@EXAMPLE.IN | - | duplicate | email -> #12 Rahul Jain |
+| 12 | Tara Kulkarni | tara.kulkarni@example.com | - | new | not in database |
+| 13 | Karan Chopra | - | +91-9000000245 | duplicate | phone -> #59 Karan Chopra |
+| 14 | Rohit Nair | ROHIT.NAIR32@MAILTEST.EXAMPLE.ORG | 9000000268 | duplicate | phone -> #30 Rohit Nair |
+
+## 2026-08-16 03:13:52  (seed 3493)
+
+14 rows: **10 already in the database**, 4 new.
+
+| # | name | email | phone | expected | matched by |
+|---|---|---|---|---|---|
+| 1 | Nikhil Mehta | - | +91-9000000104 | duplicate | phone -> #36 Nikhil Mehta |
+| 2 | Priya Singh | priya.singh61@mailtest.example.org | - | duplicate | email -> #3 Priya Singh |
+| 3 | Tanvi Gupta | tanvi.gupta31@example.com | - | duplicate | email -> #1 Tanvi Gupta |
+| 4 | MEERA BHATIA | - | +91-9000000223 | duplicate | phone -> #17 Meera Bhatia |
+| 5 | Vikram Mehta | vikram.mehta6@example.com | - | duplicate | email -> #45 Vikram Mehta |
+| 6 | DEEPAK NAIR | - | 09000000296 | duplicate | phone -> #31 Deepak Nair |
+| 7 | Rohan Iyer | rohan.iyer@example.com | - | new | not in database |
+| 8 | Nandini Bakshi | - | 9515806344 | new | not in database |
+| 9 | Ananya Iyer | - | 9850765538 | new | not in database |
+| 10 | Gaurav Mehta | gaurav.mehta79@mailtest.example.org | 919000000133 | duplicate | phone -> #29 Gaurav Mehta |
+| 11 | Kavya Verma | kavya.verma74@mailtest.example.org | - | duplicate | email -> #47 Kavya Verma |
+| 12 | Vivaan Pillai | - | 9443830515 | new | not in database |
+| 13 | Gaurav Mehta | - | +919000000133 | duplicate | phone -> #29 Gaurav Mehta |
+| 14 | R. Verma | rohit.verma13@mailtest.example.org | +919000000294 | duplicate | phone -> #24 Rohit Verma |
+
+## 2026-08-16 03:15:54  (seed 5889)
+
+14 rows: **10 already in the database**, 4 new.
+
+| # | name | email | phone | expected | matched by |
+|---|---|---|---|---|---|
+| 1 | Arjun Mishra | ARJUN.MISHRA70@EXAMPLE.COM | +91-9000000106 | duplicate | phone -> #16 Arjun Mishra |
+| 2 | Tara Pillai | - | 9232663622 | new | not in database |
+| 3 | Ananya Rao | ananya.rao@example.com | - | new | not in database |
+| 4 | Pooja Gupta | pooja.gupta57@mailtest.example.org | 919000000271 | duplicate | phone -> #23 Pooja Gupta |
+| 5 | Priya Singh | priya.singh61@mailtest.example.org | 09000000287 | duplicate | phone -> #3 Priya Singh |
+| 6 | Dhruv Menon | - | 9419094940 | new | not in database |
+| 7 | Tanvi Gupta | tanvi.gupta31@example.com | - | duplicate | email -> #1 Tanvi Gupta |
+| 8 | Meera Bhatia | meera.bhatia52@mailtest.example.org | - | duplicate | email -> #17 Meera Bhatia |
+| 9 | Arjun Bhatia | arjun.bhatia14@example.com | +91-9000000212 | duplicate | phone -> #38 Arjun Bhatia |
+| 10 | Isha Chopra | isha.chopra95@mailtest.example.org | - | duplicate | email -> #8 Isha Chopra |
+| 11 | Vivaan Sethi | vivaan.sethi@example.com | 9791308618 | new | not in database |
+| 12 | Karan Chopra | - | +91-9000000245 | duplicate | phone -> #59 Karan Chopra |
+| 13 | Tanvi Gupta | tanvi.gupta31@example.com | 919000000254 | duplicate | phone -> #1 Tanvi Gupta |
+| 14 | Isha Kapoor | isha.kapoor54@example.com | - | duplicate | email -> #37 Isha Kapoor |
+
