@@ -21,7 +21,7 @@ was done about each and what would have broken had it been missed.
 - [x] Phase 3 — audio collection app
 - [x] Phase 4 — n8n duplicate-check flow
 - [x] Phase 5 — data issues report, stuck log, scaling note
-- [ ] Video
+
 
 ---
 
